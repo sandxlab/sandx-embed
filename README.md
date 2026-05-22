@@ -99,7 +99,7 @@ enc = Encoder("my-model")
 
 | Method | Backend | When to use |
 |--------|---------|-------------|
-| `"hnsw"` | hnswlib | N > 10,000; production; fast queries |
+| `"hnsw"` | usearch | N > 10,000; production; fast queries |
 | `"exact"` | numpy | Small datasets; correctness baseline |
 
 ## Design Principles

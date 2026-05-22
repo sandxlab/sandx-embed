@@ -84,13 +84,14 @@ class VectorIndex:
             raise ValueError(f"Unknown index method: {self.method!r}")
 
     def _build_hnsw(self, vectors: np.ndarray) -> None:
-        import hnswlib  # type: ignore[import]
+        from usearch.index import Index  # type: ignore[import]
 
+        # usearch metric names differ from our public API names
+        _metric_map = {"cosine": "cos", "l2": "l2sq", "ip": "ip"}
         n = vectors.shape[0]
-        idx = hnswlib.Index(space=self.metric, dim=self._dim)
-        idx.init_index(max_elements=n, ef_construction=200, M=16)
-        idx.add_items(vectors, num_threads=-1)
-        idx.set_ef(max(50, n))
+        idx = Index(ndim=self._dim, metric=_metric_map[self.metric], dtype="f32")
+        keys = np.arange(n, dtype=np.int64)
+        idx.add(keys, vectors)
         self._index = idx
 
     # ------------------------------------------------------------------
@@ -119,12 +120,14 @@ class VectorIndex:
             return self._query_exact(vec, k)
 
     def _query_hnsw(self, vec: np.ndarray, k: int) -> SearchResult:
-        import hnswlib  # type: ignore[import]
-
-        assert isinstance(self._index, hnswlib.Index)
-        labels, distances = self._index.knn_query(vec.reshape(1, -1), k=k)
-        ids = [self._ids[i] for i in labels[0]]
-        return SearchResult(ids=ids, distances=distances[0].tolist())
+        matches = self._index.search(vec, count=k)  # type: ignore[union-attr]
+        ids = [self._ids[int(key)] for key in matches.keys]
+        dists = matches.distances.tolist()
+        # usearch l2sq returns squared distances; take sqrt to match convention
+        if self.metric == "l2":
+            import math
+            dists = [math.sqrt(max(0.0, d)) for d in dists]
+        return SearchResult(ids=ids, distances=dists)
 
     def _query_exact(self, vec: np.ndarray, k: int) -> SearchResult:
         matrix = np.asarray(self._index)
@@ -170,7 +173,7 @@ class VectorIndex:
             json.dump(meta, f)
 
         if self.method == "hnsw":
-            self._index.save_index(path + ".bin")  # type: ignore[union-attr]
+            self._index.save(path + ".usearch")  # type: ignore[union-attr]
         else:
             np.save(path + ".npy", np.asarray(self._index))
 
@@ -189,10 +192,11 @@ class VectorIndex:
         obj._ids = meta["ids"]
 
         if meta["method"] == "hnsw":
-            import hnswlib  # type: ignore[import]
+            from usearch.index import Index  # type: ignore[import]
 
-            idx = hnswlib.Index(space=meta["metric"], dim=meta["dim"])
-            idx.load_index(path + ".bin", max_elements=len(meta["ids"]))
+            _metric_map = {"cosine": "cos", "l2": "l2sq", "ip": "ip"}
+            idx = Index(ndim=meta["dim"], metric=_metric_map[meta["metric"]], dtype="f32")
+            idx.load(path + ".usearch")
             obj._index = idx
         else:
             obj._index = np.load(path + ".npy")
