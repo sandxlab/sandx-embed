@@ -36,7 +36,11 @@ class SentenceTransformerEncoder(BaseEncoder):
         from sentence_transformers import SentenceTransformer  # type: ignore[import]
 
         self._model = SentenceTransformer(model_name)
-        self._dim_val: int = self._model.get_sentence_embedding_dimension()
+        get_dim = getattr(
+            self._model, "get_embedding_dimension",
+            self._model.get_sentence_embedding_dimension,
+        )
+        self._dim_val: int = get_dim()
 
     def encode(self, inputs: list[Any], *, batch_size: int = 64, normalize: bool = True) -> np.ndarray:
         texts = [str(x) for x in inputs]
