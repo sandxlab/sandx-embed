@@ -46,6 +46,15 @@ cd sandx-embed
 pip install -e ".[dev]"
 ```
 
+## Demo
+
+```bash
+pip install "sandx-embed[hnsw]"
+python -m examples.encode_and_search
+```
+
+Encodes 15 company name variants into dense vectors, builds an ANN index, runs 4 semantic queries, and prints a pairwise similarity matrix — no external data required.
+
 ## Quick Start
 
 ```python
