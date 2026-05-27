@@ -30,7 +30,7 @@ Part of the [SandX Lab](https://github.com/sandxlab) computational infrastructur
 | `SentenceTransformerEncoder` — SBERT, E5, BGE | **Working** |
 | `VectorIndex` — HNSW and exact search | **Working** |
 | Save / load index | **Working** |
-| PyPI package | Planned |
+| PyPI package | **Working** |
 
 ## Installation
 
